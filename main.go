@@ -10,6 +10,8 @@ func main() {
 	const port = "8080"
 	fmt.Println("Hello, from chirpy!")
 	serveMux := http.NewServeMux()
+	serveMux.Handle("/", http.FileServer(http.Dir(".")))
+
 	server := &http.Server{
 		Addr:           ":" + port,
 		Handler:        serveMux,

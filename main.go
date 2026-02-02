@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -10,37 +9,6 @@ import (
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
-}
-
-type Chirp struct {
-	Body string `json:"body"`
-}
-
-type ValidationResponse struct {
-	Error string `json:"error"`
-	Valid bool   `json:"valid"`
-}
-
-func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
-	chirp := Chirp{}
-
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&chirp)
-	if err != nil {
-		msg := "Unable to decode parameters"
-		respondWithError(w, http.StatusInternalServerError, msg, err)
-		return
-	}
-
-	if len(chirp.Body) > 140 {
-		msg := "Chirp is too long"
-		respondWithError(w, http.StatusBadRequest, msg, nil)
-		return
-	}
-	resp := ValidationResponse{
-		Valid: true,
-	}
-	respondWithJSON(w, http.StatusOK, resp)
 }
 
 func main() {

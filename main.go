@@ -66,47 +66,25 @@ func handlerHealth(w http.ResponseWriter, req *http.Request) {
 }
 
 func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
 	chirp := Chirp{}
 
 	decoder := json.NewDecoder(req.Body)
-
 	err := decoder.Decode(&chirp)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		msg := ValidationResponse{
-			Error: "Unable to decode parameters",
-		}
-		msgJson, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Printf("error marshalling JSON: %s\n", err)
-		}
-		w.Write(msgJson)
+		msg := "Unable to decode parameters"
+		respondWithError(w, http.StatusInternalServerError, msg, err)
 		return
 	}
 
 	if len(chirp.Body) > 140 {
-		w.WriteHeader(http.StatusBadRequest)
-		msg := ValidationResponse{
-			Error: "Chirp is too long",
-		}
-		msgJson, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Printf("error marshalling JSON: %s\n", err)
-		}
-		w.Write(msgJson)
+		msg := "Chirp is too long"
+		respondWithError(w, http.StatusBadRequest, msg, nil)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	msg := ValidationResponse{
+	resp := ValidationResponse{
 		Valid: true,
 	}
-	msgJson, err := json.Marshal(msg)
-	if err != nil {
-		fmt.Printf("error marshalling JSON: %s\n", err)
-	}
-	w.Write(msgJson)
+	respondWithJSON(w, http.StatusOK, resp)
 }
 
 func main() {

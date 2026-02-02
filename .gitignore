@@ -1,3 +1,6 @@
 # Compiled executables
 out
 chirpy
+
+# HTTP testing
+test.http

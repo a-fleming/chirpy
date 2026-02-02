@@ -44,16 +44,6 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
-func handlerHealth(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	msg := "OK"
-	_, err := w.Write([]byte(msg))
-	if err != nil {
-		fmt.Printf("error writing response: %v\n", err)
-	}
-}
-
 func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
 	chirp := Chirp{}
 

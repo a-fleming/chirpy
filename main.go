@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -9,6 +10,15 @@ import (
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+}
+
+type Chirp struct {
+	Body string `json:"body"`
+}
+
+type ValidationResponse struct {
+	Error string `json:"error"`
+	Valid bool   `json:"valid"`
 }
 
 func (cfg *apiConfig) middlewareHandlerMetrics(w http.ResponseWriter, req *http.Request) {
@@ -55,6 +65,50 @@ func handlerHealth(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	chirp := Chirp{}
+
+	decoder := json.NewDecoder(req.Body)
+
+	err := decoder.Decode(&chirp)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		msg := ValidationResponse{
+			Error: "Unable to decode parameters",
+		}
+		msgJson, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Printf("error marshalling JSON: %s\n", err)
+		}
+		w.Write(msgJson)
+		return
+	}
+
+	if len(chirp.Body) > 140 {
+		w.WriteHeader(http.StatusBadRequest)
+		msg := ValidationResponse{
+			Error: "Chirp is too long",
+		}
+		msgJson, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Printf("error marshalling JSON: %s\n", err)
+		}
+		w.Write(msgJson)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	msg := ValidationResponse{
+		Valid: true,
+	}
+	msgJson, err := json.Marshal(msg)
+	if err != nil {
+		fmt.Printf("error marshalling JSON: %s\n", err)
+	}
+	w.Write(msgJson)
+}
+
 func main() {
 	const port = "8080"
 	cfg := apiConfig{}
@@ -67,6 +121,7 @@ func main() {
 	serveMux.Handle("/app/", cfg.middlewareMetricsInc(fileHandler))
 
 	serveMux.HandleFunc("GET /api/healthz", handlerHealth)
+	serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 
 	serveMux.HandleFunc("GET /admin/metrics", cfg.middlewareHandlerMetrics)
 	serveMux.HandleFunc("POST /admin/reset", cfg.middlewareHandlerReset)

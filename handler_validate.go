@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
@@ -10,7 +13,7 @@ func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
 		Body string `json:"body"`
 	}
 	type returnVals struct {
-		Valid bool `json:"valid"`
+		CleanedBody string `json:"cleaned_body"`
 	}
 
 	params := parameters{}
@@ -29,6 +32,45 @@ func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	respondWithJSON(w, http.StatusOK, returnVals{
-		Valid: true,
+		CleanedBody: basicCleanChirp(params.Body),
 	})
+}
+
+func basicCleanChirp(text string) string {
+	const replacementStr = "****"
+	profaneWords := []string{
+		"fornax",
+		"kerfuffle",
+		"sharbert",
+	}
+	words := strings.Split(text, " ")
+	for idx, word := range words {
+		if slices.Contains(profaneWords, strings.ToLower(word)) {
+			words[idx] = replacementStr
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func advancedCleanChirp(text string) string {
+	const replacementStr = "****"
+	profaneWords := []string{
+		"fornax",
+		"kerfuffle",
+		"sharbert",
+	}
+	cleaned := text
+
+	for _, profane := range profaneWords {
+		lowerCase := strings.ToLower(cleaned)
+		for idx := strings.Index(lowerCase, profane); idx > -1; {
+			fmt.Printf("found '%s' at idx: %d\n", profane, idx)
+			endIdx := idx + len(profane)
+			cleaned = cleaned[:idx] + replacementStr + cleaned[endIdx:]
+
+			lowerCase = strings.ToLower(cleaned)
+			idx = strings.Index(lowerCase, profane)
+		}
+	}
+	return cleaned
 }

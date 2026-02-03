@@ -12,17 +12,18 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, req *http.Request) {
+type Chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
+func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
 		Body   string    `json:"body"`
 		UserID uuid.UUID `json:"user_id"`
-	}
-	type Chirp struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Body      string    `json:"body"`
-		UserID    uuid.UUID `json:"user_id"`
 	}
 
 	params := parameters{}
@@ -48,6 +49,19 @@ func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, Chirp(chirp))
+}
+
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
+	chirps, err := cfg.db.GetChirps(req.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to create chirp", err)
+		return
+	}
+	jsonFormattedChirps := []Chirp{}
+	for _, chirp := range chirps {
+		jsonFormattedChirps = append(jsonFormattedChirps, Chirp(chirp))
+	}
+	respondWithJSON(w, http.StatusOK, jsonFormattedChirps)
 }
 
 func basicCleanChirp(text string) string {

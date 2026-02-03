@@ -5,6 +5,12 @@ import (
 )
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, req *http.Request) {
+	if cfg.platform != "dev" {
+		msg := "403 Forbidden"
+		respondWithError(w, http.StatusForbidden, msg, nil)
+		return
+	}
+
 	cfg.fileserverHits.Store(0)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)

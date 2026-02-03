@@ -4,3 +4,6 @@ chirpy
 
 # HTTP testing
 test.http
+
+# Environment variables
+.env

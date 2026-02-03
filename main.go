@@ -1,19 +1,44 @@
 package main
 
 import (
+	"chirpy/internal/database"
+	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	db             *database.Queries
 }
 
 func main() {
 	const port = "8080"
 	cfg := apiConfig{}
+
+	godotenv.Load()
+
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
+	}
+	err = db.Ping()
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	dbQueries := database.New(db)
+
+	cfg.db = dbQueries
 
 	fmt.Println("Hello, from chirpy!")
 
@@ -36,7 +61,7 @@ func main() {
 		MaxHeaderBytes: 1 << 20,          // from net/http example
 	}
 	fmt.Printf("Serving on port: %s\n", port)
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		fmt.Printf("error encountered: %v\n", err)
 	}

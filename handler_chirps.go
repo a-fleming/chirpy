@@ -51,6 +51,20 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 	respondWithJSON(w, http.StatusCreated, Chirp(chirp))
 }
 
+func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, req *http.Request) {
+	chirp_id, err := uuid.Parse(req.PathValue("chirp_id"))
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "404 Not Found", nil)
+		return
+	}
+	chirp, err := cfg.db.GetChirpByID(req.Context(), chirp_id)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "404 Not Found", nil)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, Chirp(chirp))
+}
+
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
 	chirps, err := cfg.db.GetChirps(req.Context())
 	if err != nil {

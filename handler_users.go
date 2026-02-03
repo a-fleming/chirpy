@@ -1,6 +1,8 @@
 package main
 
 import (
+	"chirpy/internal/auth"
+	"chirpy/internal/database"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -11,13 +13,15 @@ import (
 
 func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	type User struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
+		ID             uuid.UUID `json:"id"`
+		CreatedAt      time.Time `json:"created_at"`
+		UpdatedAt      time.Time `json:"updated_at"`
+		Email          string    `json:"email"`
+		HashedPassword string    `json:"hashed_password,omitempty"`
 	}
 
 	params := parameters{}
@@ -35,12 +39,29 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 		respondWithError(w, http.StatusBadRequest, msg, err)
 		return
 	}
-	user, err := cfg.db.CreateUser(req.Context(), params.Email)
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		msg := "Unable to hash password"
+		respondWithError(w, http.StatusInternalServerError, msg, err)
+	}
+
+	paramsWithHashedPassword := database.CreateUserParams{
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+	}
+
+	user, err := cfg.db.CreateUser(req.Context(), paramsWithHashedPassword)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to create user", err)
 		return
 	}
-	respondWithJSON(w, http.StatusCreated, User(user))
+	userWithoutHashedPassword := User{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+	}
+	respondWithJSON(w, http.StatusCreated, userWithoutHashedPassword)
 }
 
 func isValidEmail(email string) bool {

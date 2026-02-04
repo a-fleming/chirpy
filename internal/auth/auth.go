@@ -11,6 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type TokenType string
+
+const TokenTypeAccess TokenType = "chirpy-access"
+
 func CheckPasswordHash(password, hash string) (bool, error) {
 	return argon2id.ComparePasswordAndHash(password, hash)
 }
@@ -18,16 +22,16 @@ func CheckPasswordHash(password, hash string) (bool, error) {
 func GetBearerToken(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
-		return "", fmt.Errorf("missing Authorization header")
+		return "", fmt.Errorf("missing authorization header")
 	}
-	if !strings.Contains(authHeader, "Bearer ") {
-		return "", fmt.Errorf("missing Bearer Token")
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) != 2 || splitAuth[0] != "Bearer" {
+		return "", fmt.Errorf("malformed authorization header")
 	}
-	bearerToken := strings.Replace(authHeader, "Bearer ", "", 1)
-	if bearerToken == "" {
-		return "", fmt.Errorf("missing Bearer Token")
+	if splitAuth[1] == "" {
+		return "", fmt.Errorf("empty bearer token")
 	}
-	return bearerToken, nil
+	return splitAuth[1], nil
 }
 
 func HashPassword(password string) (string, error) {
@@ -37,34 +41,42 @@ func HashPassword(password string) (string, error) {
 
 func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
 	now := time.Now().UTC()
+	signingKey := []byte(tokenSecret)
 
 	claims := &jwt.RegisteredClaims{
-		Issuer:    "chirpy",
+		Issuer:    string(TokenTypeAccess),
 		IssuedAt:  jwt.NewNumericDate(now),
 		ExpiresAt: jwt.NewNumericDate(now.Add(expiresIn)),
 		Subject:   userID.String(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedString, err := token.SignedString([]byte(tokenSecret))
-	if err != nil {
-		return "", err
-	}
-	return signedString, nil
+	return token.SignedString(signingKey)
 }
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	claims := &jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
-		if t.Method != jwt.SigningMethodHS256 {
-			return nil, fmt.Errorf("unexpected signing method: %s", t.Header["alg"])
-		}
-		return []byte(tokenSecret), nil
-	})
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(t *jwt.Token) (any, error) { return []byte(tokenSecret), nil },
+	)
 	if err != nil {
-		return uuid.UUID{}, err
+		return uuid.Nil, err
 	}
-	if !token.Valid {
-		return uuid.UUID{}, fmt.Errorf("invalid token")
+	userIDString, err := token.Claims.GetSubject()
+	if err != nil {
+		return uuid.Nil, err
 	}
-	return uuid.Parse(claims.Subject)
+	issuer, err := token.Claims.GetIssuer()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if issuer != string(TokenTypeAccess) {
+		return uuid.Nil, fmt.Errorf("invalid issuer")
+	}
+	id, err := uuid.Parse(userIDString)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+	return id, nil
 }

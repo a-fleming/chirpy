@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -43,7 +44,9 @@ func TestBearerToken_Invalid(t *testing.T) {
 		{"empty header value", ""},
 		{"empty token", "Bearer "},
 		{"missing space after Bearer", "BearerSUPER_SECRET"},
-		{"wrong scsheme", "Basic abc123"},
+		{"wrong scheme", "Basic abc123"},
+		{"extra segments", "Bearer token extra"},
+		{"leading space", " Bearer token"},
 		{"missing authorization", ""},
 	}
 
@@ -114,5 +117,29 @@ func TestValidateJWTRejectsExpiredToken(t *testing.T) {
 	_, err = ValidateJWT(token, secret)
 	if err == nil {
 		t.Fatalf("FAIL: expected error for expired token, got nil")
+	}
+}
+
+func TestValidateJWTRejectsWrongIssuer(t *testing.T) {
+	userID := uuid.New()
+	secret := "super_secret_key"
+	expiresIn := time.Hour
+
+	// Manually craft a token with a bad issuer
+	badIssuer := "other-issuer"
+	claims := jwt.RegisteredClaims{
+		Issuer:    badIssuer,
+		Subject:   userID.String(),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+
+	_, err = ValidateJWT(tokenString, secret)
+	if err == nil {
+		t.Fatalf("expected error for wrong issuer, got nil")
 	}
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"chirpy/internal/auth"
 	"chirpy/internal/database"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,8 +24,9 @@ type Chirp struct {
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body     string    `json:"body"`
+		UserID   uuid.UUID `json:"user_id"`
+		JWTToken string    `json:"token"`
 	}
 
 	params := parameters{}
@@ -35,6 +38,34 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 		respondWithError(w, http.StatusInternalServerError, msg, err)
 		return
 	}
+
+	bearerToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		msg := "401 Unauthorized"
+		respondWithError(w, http.StatusUnauthorized, msg, err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(bearerToken, cfg.jwtSecret)
+	if err != nil {
+		msg := "error validating JWT"
+		respondWithError(w, http.StatusUnauthorized, msg, err)
+		return
+	}
+
+	// Verify user exists in database
+	_, err = cfg.db.GetUserByID(req.Context(), userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			msg := "401 Unauthorized"
+			respondWithError(w, http.StatusUnauthorized, msg, err)
+		} else {
+			msg := "Database error"
+			respondWithError(w, http.StatusInternalServerError, msg, err)
+		}
+		return
+	}
+
 	params.Body = basicCleanChirp(params.Body)
 
 	const maxChirpLength = 140
@@ -43,7 +74,11 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 		respondWithError(w, http.StatusBadRequest, msg, nil)
 		return
 	}
-	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams(params))
+	dbParams := database.CreateChirpParams{
+		Body:   params.Body,
+		UserID: userID,
+	}
+	chirp, err := cfg.db.CreateChirp(req.Context(), dbParams)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to create chirp", err)
 		return

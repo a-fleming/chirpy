@@ -2,6 +2,8 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -11,6 +13,21 @@ import (
 
 func CheckPasswordHash(password, hash string) (bool, error) {
 	return argon2id.ComparePasswordAndHash(password, hash)
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("missing Authorization header")
+	}
+	if !strings.Contains(authHeader, "Bearer ") {
+		return "", fmt.Errorf("missing Bearer Token")
+	}
+	bearerToken := strings.Replace(authHeader, "Bearer ", "", 1)
+	if bearerToken == "" {
+		return "", fmt.Errorf("missing Bearer Token")
+	}
+	return bearerToken, nil
 }
 
 func HashPassword(password string) (string, error) {

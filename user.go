@@ -16,6 +16,7 @@ type User struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 	Email          string    `json:"email"`
 	HashedPassword string    `json:"hashed_password,omitempty"`
+	JWTToken       string    `json:"token,omitempty"`
 }
 
 func DecodeEmailAndPassword(req *http.Request) (string, string, error) {
@@ -51,6 +52,7 @@ func SanitizeUser(user any) User {
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 			Email:     u.Email,
+			JWTToken:  u.JWTToken,
 		}
 	case database.User:
 		return User{
@@ -58,6 +60,7 @@ func SanitizeUser(user any) User {
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 			Email:     u.Email,
+			// TODO: probably need to change database to include JWTToken
 		}
 	default:
 		return User{}

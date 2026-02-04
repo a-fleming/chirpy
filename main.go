@@ -17,6 +17,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwtSecret      string
 }
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 	const port = "8080"
 	cfg := apiConfig{}
 	cfg.platform = os.Getenv("PLATFORM")
-
+	cfg.jwtSecret = os.Getenv("JWT_SECRET")
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {

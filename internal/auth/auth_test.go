@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -17,6 +18,46 @@ func TestCheckPasswordHash(t *testing.T) {
 	}
 	if !same {
 		t.Fatalf("FAIL: expected password to match hash")
+	}
+}
+
+func TestGetBearerToken_Valid(t *testing.T) {
+	expected := "access_granted"
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+expected)
+
+	received, err := GetBearerToken(headers)
+	if err != nil {
+		t.Fatalf("FAIL: GetBearerToken returned error: %v", err)
+	}
+	if received != expected {
+		t.Fatalf("FAIL: got bearerToken %v, expected %v", received, expected)
+	}
+}
+
+func TestBearerToken_Invalid(t *testing.T) {
+	cases := []struct {
+		name string
+		auth string
+	}{
+		{"empty header value", ""},
+		{"empty token", "Bearer "},
+		{"missing space after Bearer", "BearerSUPER_SECRET"},
+		{"wrong scsheme", "Basic abc123"},
+		{"missing authorization", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			headers := http.Header{}
+			if tc.name != "missing authorization" {
+				headers.Set("Authorization", tc.auth)
+			}
+			_, err := GetBearerToken(headers)
+			if err == nil {
+				t.Fatalf("expected error, got nil (Authorization=%q)", tc.auth)
+			}
+		})
 	}
 }
 

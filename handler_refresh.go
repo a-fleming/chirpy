@@ -31,11 +31,11 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, req *http.Request) {
 		return
 	} else if refreshTokenDetails.RevokedAt.Valid {
 		msg := "401 Unauthorized"
-		respondWithError(w, http.StatusUnauthorized, msg, err)
+		respondWithError(w, http.StatusUnauthorized, msg, nil)
 		return
 	} else if refreshTokenDetails.ExpiresAt.Compare(now) <= 0 {
 		msg := "401 Unauthorized"
-		respondWithError(w, http.StatusUnauthorized, msg, err)
+		respondWithError(w, http.StatusUnauthorized, msg, nil)
 		return
 	}
 	accessToken, err := auth.MakeJWT(refreshTokenDetails.UserID, cfg.jwtSecret, defaultAccessTokenExpiration)

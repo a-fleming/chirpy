@@ -22,7 +22,7 @@ type Chirp struct {
 	UserID    uuid.UUID `json:"user_id"`
 }
 
-func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, req *http.Request) {
 	type createChirpParams struct {
 		Body string `json:"body"`
 	}
@@ -84,7 +84,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 	respondWithJSON(w, http.StatusCreated, Chirp(chirp))
 }
 
-func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handlerChirpsGetChirpByID(w http.ResponseWriter, req *http.Request) {
 	chirp_id, err := uuid.Parse(req.PathValue("chirp_id"))
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "404 Not Found", nil)
@@ -98,7 +98,7 @@ func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, req *http.Reque
 	respondWithJSON(w, http.StatusOK, Chirp(chirp))
 }
 
-func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handlerChirpsGetChirps(w http.ResponseWriter, req *http.Request) {
 	chirps, err := cfg.db.GetChirps(req.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to create chirp", err)

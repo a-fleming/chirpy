@@ -2,40 +2,41 @@ package main
 
 import (
 	"chirpy/internal/auth"
+	"chirpy/internal/database"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
+const defaultAccessTokenExpiration = time.Hour
+
 type loginParams struct {
-	Email        string `json:"email"`
-	Password     string `json:"password"`
-	ExpiresInSec *int32 `json:"expires_in_seconds,omitempty"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func DecodeLoginParams(req *http.Request) (loginParams, error) {
-	const defaultExpirationSec int32 = 3600 // 1 Hour
 	params := loginParams{}
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&params)
 	if err != nil {
 		return loginParams{}, err
 	}
-
-	// add expiration time if not provided
-	if params.ExpiresInSec == nil {
-		v := defaultExpirationSec
-		params.ExpiresInSec = &v
-	}
-
-	// validate expiration time is less than the default
-	if *params.ExpiresInSec > defaultExpirationSec {
-		*params.ExpiresInSec = defaultExpirationSec
-	}
 	return params, nil
 }
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
+	type loginResponse struct {
+		ID           uuid.UUID `json:"id"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Email        string    `json:"email"`
+		JWTToken     string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
+	}
 	params, err := DecodeLoginParams(req)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "401 Unauthorized", nil)
@@ -49,12 +50,34 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	expiresInSec := time.Duration(*params.ExpiresInSec) * time.Second
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiresInSec)
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, defaultAccessTokenExpiration)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to generate JWT.", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to generate JWT", err)
+		return
 	}
-	userWithToken := SanitizeUser(user)
-	userWithToken.JWTToken = token
-	respondWithJSON(w, http.StatusOK, userWithToken)
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to generate refresh token", err)
+		return
+	}
+	createRefreshTokenParams := database.CreateRefreshTokenParams{
+		Token:  refreshToken,
+		UserID: user.ID,
+	}
+	dbResults, err := cfg.db.CreateRefreshToken(req.Context(), createRefreshTokenParams)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to store refresh token", err)
+		return
+	}
+	fmt.Printf("successfully stored refresh token: %+v\n", dbResults)
+
+	userWithTokens := loginResponse{
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		JWTToken:     token,
+		RefreshToken: refreshToken,
+	}
+	respondWithJSON(w, http.StatusOK, userWithTokens)
 }

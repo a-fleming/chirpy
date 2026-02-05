@@ -18,5 +18,5 @@ func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, req *http.Request) {
 		msg := "Unable to revoke refresh token"
 		respondWithError(w, http.StatusInternalServerError, msg, err)
 	}
-	respondWithJSON(w, http.StatusNoContent, struct{}{})
+	w.WriteHeader(http.StatusNoContent)
 }

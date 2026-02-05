@@ -42,6 +42,7 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		msg := "Unable to generate JWT"
 		respondWithError(w, http.StatusInternalServerError, msg, err)
+		return
 	}
 
 	response := refreshResponse{

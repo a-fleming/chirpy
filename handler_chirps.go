@@ -84,6 +84,45 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, req *http.Reque
 	respondWithJSON(w, http.StatusCreated, Chirp(chirp))
 }
 
+func (cfg *apiConfig) handlerChirpsDelete(w http.ResponseWriter, req *http.Request) {
+	accessToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		msg := "401 Unauthorized"
+		respondWithError(w, http.StatusUnauthorized, msg, err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(accessToken, cfg.jwtSecret)
+	if err != nil {
+		msg := "error validating JWT"
+		respondWithError(w, http.StatusUnauthorized, msg, err)
+		return
+	}
+
+	chirp_id, err := uuid.Parse(req.PathValue("chirp_id"))
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "404 Not Found", nil)
+		return
+	}
+	chirp, err := cfg.db.GetChirpByID(req.Context(), chirp_id)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "404 Not Found", nil)
+		return
+	}
+	if userID != chirp.UserID {
+		msg := "403 Forbidden"
+		respondWithError(w, http.StatusForbidden, msg, nil)
+		return
+	}
+	err = cfg.db.DeleteChirpByID(req.Context(), chirp_id)
+	if err != nil {
+		msg := "Database error"
+		respondWithError(w, http.StatusInternalServerError, msg, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (cfg *apiConfig) handlerChirpsGetChirpByID(w http.ResponseWriter, req *http.Request) {
 	chirp_id, err := uuid.Parse(req.PathValue("chirp_id"))
 	if err != nil {

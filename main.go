@@ -59,6 +59,7 @@ func main() {
 	serveMux.HandleFunc("GET /api/healthz", handlerHealth)
 	serveMux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
+	serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsers)
 
 	server := &http.Server{

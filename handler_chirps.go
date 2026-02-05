@@ -23,13 +23,11 @@ type Chirp struct {
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
-	type parameters struct {
-		Body     string    `json:"body"`
-		UserID   uuid.UUID `json:"user_id"`
-		JWTToken string    `json:"token"`
+	type createChirpParams struct {
+		Body string `json:"body"`
 	}
 
-	params := parameters{}
+	params := createChirpParams{}
 
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&params)

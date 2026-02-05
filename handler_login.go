@@ -44,6 +44,10 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	}
 
 	user, err := cfg.db.GetUserByEmail(req.Context(), params.Email)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "401 Unauthorized", nil)
+		return
+	}
 	isMatch, err := auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if !isMatch || err != nil {
 		respondWithError(w, http.StatusUnauthorized, "401 Unauthorized", nil)

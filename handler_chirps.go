@@ -138,6 +138,26 @@ func (cfg *apiConfig) handlerChirpsGetChirpByID(w http.ResponseWriter, req *http
 }
 
 func (cfg *apiConfig) handlerChirpsGetChirps(w http.ResponseWriter, req *http.Request) {
+	query := req.URL.Query()
+	authorIDStr := query.Get("author_id")
+	if authorIDStr != "" {
+		authorID, err := uuid.Parse(authorIDStr)
+		if err != nil {
+			msg := "404 Not Found"
+			respondWithError(w, http.StatusNotFound, msg, err)
+			return
+		}
+
+		chirps, err := cfg.db.GetChirpsByUserID(req.Context(), authorID)
+		if err != nil && err != sql.ErrNoRows {
+			msg := "404 Not Found"
+			respondWithError(w, http.StatusNotFound, msg, err)
+			return
+		}
+		respondWithJSON(w, http.StatusOK, chirps)
+		return
+	}
+
 	chirps, err := cfg.db.GetChirps(req.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to create chirp", err)

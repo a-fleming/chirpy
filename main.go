@@ -64,6 +64,9 @@ func main() {
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersCreate)
 	serveMux.HandleFunc("PUT /api/users", cfg.handlerUsersUpdate)
 
+	// webhooks
+	serveMux.HandleFunc("POST /api/polka/webhooks", cfg.handlerPolka)
+
 	server := &http.Server{
 		Addr:           ":" + port,
 		Handler:        serveMux,

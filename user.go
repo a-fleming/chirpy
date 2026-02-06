@@ -17,6 +17,7 @@ type User struct {
 	Email          string    `json:"email"`
 	HashedPassword string    `json:"hashed_password,omitempty"`
 	JWTToken       string    `json:"token,omitempty"`
+	IsChirpyRed    bool      `json:"is_chirpy_red"`
 }
 
 func DecodeEmailAndPassword(req *http.Request) (string, string, error) {
@@ -48,18 +49,20 @@ func SanitizeUser(user any) User {
 	switch u := user.(type) {
 	case User:
 		return User{
-			ID:        u.ID,
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
-			Email:     u.Email,
-			JWTToken:  u.JWTToken,
+			ID:          u.ID,
+			CreatedAt:   u.CreatedAt,
+			UpdatedAt:   u.UpdatedAt,
+			Email:       u.Email,
+			JWTToken:    u.JWTToken,
+			IsChirpyRed: u.IsChirpyRed,
 		}
 	case database.User:
 		return User{
-			ID:        u.ID,
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
-			Email:     u.Email,
+			ID:          u.ID,
+			CreatedAt:   u.CreatedAt,
+			UpdatedAt:   u.UpdatedAt,
+			Email:       u.Email,
+			IsChirpyRed: u.IsChirpyRed,
 			// TODO: probably need to change database to include JWTToken
 		}
 	default:

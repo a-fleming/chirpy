@@ -35,6 +35,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Email        string    `json:"email"`
 		JWTToken     string    `json:"token"`
 		RefreshToken string    `json:"refresh_token"`
+		IsChirpyRed  bool      `json:"is_chirpy_red"`
 	}
 	params, err := DecodeLoginParams(req)
 	if err != nil {
@@ -80,6 +81,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Email:        user.Email,
 		JWTToken:     token,
 		RefreshToken: refreshToken,
+		IsChirpyRed:  user.IsChirpyRed,
 	}
 	respondWithJSON(w, http.StatusOK, userWithTokens)
 }

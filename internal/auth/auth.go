@@ -21,19 +21,27 @@ func CheckPasswordHash(password, hash string) (bool, error) {
 	return argon2id.ComparePasswordAndHash(password, hash)
 }
 
-func GetBearerToken(headers http.Header) (string, error) {
+func GetAPIKey(headers http.Header) (string, error) {
+	return getAuthHeaderValue(headers, "ApiKey", "api key")
+}
+
+func getAuthHeaderValue(headers http.Header, prefix string, errMsgTerm string) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}
 	splitAuth := strings.Split(authHeader, " ")
-	if len(splitAuth) != 2 || splitAuth[0] != "Bearer" {
+	if len(splitAuth) != 2 || splitAuth[0] != prefix {
 		return "", fmt.Errorf("malformed authorization header")
 	}
 	if splitAuth[1] == "" {
-		return "", fmt.Errorf("empty bearer token")
+		return "", fmt.Errorf("empty %s", errMsgTerm)
 	}
 	return splitAuth[1], nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	return getAuthHeaderValue(headers, "Bearer", "bearer token")
 }
 
 func HashPassword(password string) (string, error) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chirpy/internal/auth"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -26,6 +27,18 @@ func (cfg *apiConfig) handlerPolka(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	apiKey, err := auth.GetAPIKey(req.Header)
+	if err != nil {
+		msg := "401 Unauthorized"
+		respondWithError(w, http.StatusUnauthorized, msg, err)
+		return
+	}
+
+	if apiKey != cfg.polkaKey {
+		msg := "401 Unauthorized"
+		respondWithError(w, http.StatusUnauthorized, msg, nil)
+		return
+	}
 	if polkaEvent.Event == "user.upgraded" {
 		userID, err := uuid.Parse(polkaEvent.Data.UserID)
 		if err != nil {

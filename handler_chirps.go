@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -140,6 +141,7 @@ func (cfg *apiConfig) handlerChirpsGetChirpByID(w http.ResponseWriter, req *http
 func (cfg *apiConfig) handlerChirpsGetChirps(w http.ResponseWriter, req *http.Request) {
 	query := req.URL.Query()
 	authorIDStr := query.Get("author_id")
+	sortOrder := query.Get("sort")
 	if authorIDStr != "" {
 		authorID, err := uuid.Parse(authorIDStr)
 		if err != nil {
@@ -148,26 +150,26 @@ func (cfg *apiConfig) handlerChirpsGetChirps(w http.ResponseWriter, req *http.Re
 			return
 		}
 
-		chirps, err := cfg.db.GetChirpsByUserID(req.Context(), authorID)
+		dbChirps, err := cfg.db.GetChirpsByUserID(req.Context(), authorID)
 		if err != nil && err != sql.ErrNoRows {
 			msg := "404 Not Found"
 			respondWithError(w, http.StatusNotFound, msg, err)
 			return
 		}
+		chirps := convertDBChirpsToChirps(dbChirps)
+		chirps = sortChirps(chirps, sortOrder)
 		respondWithJSON(w, http.StatusOK, chirps)
 		return
 	}
 
-	chirps, err := cfg.db.GetChirps(req.Context())
+	dbChirps, err := cfg.db.GetChirps(req.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to create chirp", err)
 		return
 	}
-	jsonFormattedChirps := []Chirp{}
-	for _, chirp := range chirps {
-		jsonFormattedChirps = append(jsonFormattedChirps, Chirp(chirp))
-	}
-	respondWithJSON(w, http.StatusOK, jsonFormattedChirps)
+	chirps := convertDBChirpsToChirps(dbChirps)
+	chirps = sortChirps(chirps, sortOrder)
+	respondWithJSON(w, http.StatusOK, chirps)
 }
 
 func basicCleanChirp(text string) string {
@@ -207,4 +209,26 @@ func advancedCleanChirp(text string) string {
 		}
 	}
 	return cleaned
+}
+
+func convertDBChirpsToChirps(dbChirps []database.Chirp) []Chirp {
+	convertedChirps := make([]Chirp, len(dbChirps))
+	for i, dbChirp := range dbChirps {
+		convertedChirps[i] = Chirp(dbChirp)
+	}
+	return convertedChirps
+}
+
+func sortChirps(chirps []Chirp, order string) []Chirp {
+	if strings.ToLower(order) == "asc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
+	}
+	if strings.ToLower(order) == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
+	}
+	return chirps
 }
